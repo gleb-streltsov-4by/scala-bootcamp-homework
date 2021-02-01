@@ -45,34 +45,38 @@ class BasicsSpec extends AnyFlatSpec with ScalaCheckDrivenPropertyChecks {
   }
 
   "lcm" should "be equal to product with simple numbers" in {
-    lcm(13, 3) shouldEqual 39
+    lcm(13, 3) shouldEqual Right(39)
   }
 
   "lcm" should "be independent from order of numbers" in {
-    lcm(18, 36) shouldEqual 36
-    lcm(36, 18) shouldEqual 36
+    lcm(18, 36) shouldEqual Right(36)
+    lcm(36, 18) shouldEqual Right(36)
   }
 
   "lcm" should "be equal to the greater number if zero present" in {
-    lcm(0, 4) shouldEqual 0
-    lcm(5, 0) shouldEqual 0
+    lcm(0, 4) shouldEqual Right(0)
+    lcm(5, 0) shouldEqual Right(0)
   }
 
   "lcm" should "return correct results with positive numbers" in {
-    lcm(4, 5) shouldEqual 20
-    lcm(14, 21) shouldEqual 42
-    lcm(1, 1) shouldEqual 1
+    lcm(4, 5) shouldEqual Right(20)
+    lcm(14, 21) shouldEqual Right(42)
+    lcm(1, 1) shouldEqual Right(1)
   }
 
   "lcm" should "return correct results with negative numbers" in {
-    lcm(-4, -5) shouldEqual 20
-    lcm(-14, -21) shouldEqual 42
-    lcm(-1, -1) shouldEqual 1
+    lcm(-4, -5) shouldEqual Right(20)
+    lcm(-14, -21) shouldEqual Right(42)
+    lcm(-1, -1) shouldEqual Right(1)
   }
 
   "lcm" should "return correct results with negative and positive numbers" in {
-    lcm(4, -5) shouldEqual 20
-    lcm(-14, 21) shouldEqual 42
-    lcm(1, -1) shouldEqual 1
+    lcm(4, -5) shouldEqual Right(20)
+    lcm(-14, 21) shouldEqual Right(42)
+    lcm(1, -1) shouldEqual Right(1)
+  }
+
+  "lcm" should "be equal to Either in case `a` and `b` are equal to 0" in {
+    lcm(0, 0) shouldEqual Left("`a` and `b` cannot be simultaneously equal to 0")
   }
 }
