@@ -1,0 +1,8 @@
+divide 4 5
+sum 5 5 6 8.5
+average 4 3 8.5 4
+min 4 -3 -17
+max 4 -3 -17
+ma 4 -3 -17
+msfd 4 -3 -1sdf7
+min 4 -3 -1sdf7
