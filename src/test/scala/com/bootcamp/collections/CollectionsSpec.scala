@@ -1,7 +1,7 @@
-package com.bootcamp.basics
+package com.bootcamp.collections
 
-import com.bootcamp.basics.Collections._
-import com.bootcamp.basics.LinkedList._
+import Collections._
+import LinkedList._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers._
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks

@@ -1,6 +1,6 @@
-package com.bootcamp.basics
+package com.bootcamp.collections
 
-import com.bootcamp.basics.DataStructures._
+import DataStructures._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers._
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks

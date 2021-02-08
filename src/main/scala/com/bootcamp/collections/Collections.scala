@@ -1,4 +1,4 @@
-package com.bootcamp.basics
+package com.bootcamp.collections
 
 import scala.annotation.tailrec
 
