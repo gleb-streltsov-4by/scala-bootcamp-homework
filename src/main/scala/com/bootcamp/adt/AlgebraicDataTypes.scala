@@ -4,7 +4,7 @@ import scala.collection.SortedSet
 
 object AlgebraicDataTypes {
 
-  final case class PokerError(message: String, input: String) {
+  final case class Error(message: String, input: String) {
     override def toString: String = s"Error: $message; input: $input"
   }
 
@@ -15,13 +15,13 @@ object AlgebraicDataTypes {
     final case object Club      extends Suit
     final case object Heart     extends Suit
 
-    def from(str: String): Either[PokerError, Suit] = {
+    def from(str: String): Either[Error, Suit] = {
       str match {
         case "h" => Right(Heart)
         case "d" => Right(Diamond)
         case "s" => Right(Spade)
         case "c" => Right(Club)
-        case _   => Left(PokerError("Illegal argument for `Suit`", str))
+        case _   => Left(Error("Illegal argument for `Suit`", str))
       }
     }
   }
@@ -42,7 +42,7 @@ object AlgebraicDataTypes {
     final case object King    extends Rank
     final case object Ace     extends Rank
 
-    def from(str: String): Either[PokerError, Rank] = {
+    def from(str: String): Either[Error, Rank] = {
       str match {
         case "2" => Right(Two)
         case "3" => Right(Three)
@@ -57,7 +57,7 @@ object AlgebraicDataTypes {
         case "Q" => Right(Queen)
         case "K" => Right(King)
         case "A" => Right(Ace)
-        case _   => Left(PokerError("Illegal argument for `Rank`", str))
+        case _   => Left(Error("Illegal argument for `Rank`", str))
       }
     }
   }
@@ -66,7 +66,7 @@ object AlgebraicDataTypes {
   object Card {
     private val cardLength = 2
 
-    def from(str: String): Either[PokerError, Card] = {
+    def from(str: String): Either[Error, Card] = {
       if (str.length == cardLength) {
         for {
           rank <- Rank.from(str.take(1))
@@ -75,7 +75,7 @@ object AlgebraicDataTypes {
           card = new Card(rank, suit){}
         } yield card
       }
-      else Left(PokerError("Illegal argument for `Card`", str))
+      else Left(Error("Illegal argument for `Card`", str))
     }
   }
 
@@ -89,9 +89,9 @@ object AlgebraicDataTypes {
   final case class Board private(cards: List[Card]) extends AnyVal
   object Board {
     private val boardLength = 5
-    def from(cards: List[Card]): Either[PokerError, Board] = {
+    def from(cards: List[Card]): Either[Error, Board] = {
       cards match {
-        case board if board.length != boardLength => Left(PokerError("Invalid board size", "i"))
+        case board if board.length != boardLength => Left(Error("Invalid board size", "i"))
         case _ => Right(Board(cards))
       }
     }
@@ -99,15 +99,15 @@ object AlgebraicDataTypes {
 
   sealed trait PokerCombination
   object PokerCombination {
-    final object StraightFlush  extends PokerCombination
-    final object FourOfAKind    extends PokerCombination
-    final object FullHouse      extends PokerCombination
-    final object Flush          extends PokerCombination
-    final object Straight       extends PokerCombination
-    final object ThreeOfAKind   extends PokerCombination
-    final object TwoPair        extends PokerCombination
-    final object Pair           extends PokerCombination
-    final object HighCard       extends PokerCombination
+    final case object StraightFlush  extends PokerCombination
+    final case object FourOfAKind    extends PokerCombination
+    final case object FullHouse      extends PokerCombination
+    final case object Flush          extends PokerCombination
+    final case object Straight       extends PokerCombination
+    final case object ThreeOfAKind   extends PokerCombination
+    final case object TwoPair        extends PokerCombination
+    final case object Pair           extends PokerCombination
+    final case object HighCard       extends PokerCombination
   }
 
   final case class TestCase(board: Board, hands: Set[Hand])
