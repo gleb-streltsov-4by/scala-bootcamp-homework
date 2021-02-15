@@ -91,7 +91,8 @@ object AlgebraicDataTypes {
     private val boardLength = 5
     def from(cards: List[Card]): Either[Error, Board] = {
       cards match {
-        case board if board.length != boardLength => Left(Error("Invalid board size", "i"))
+        case board if board.length != boardLength =>
+          Left(Error("Invalid board size should be 5", s"${board.length}"))
         case _ => Right(Board(cards))
       }
     }
