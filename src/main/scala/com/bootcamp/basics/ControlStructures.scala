@@ -3,6 +3,7 @@ package com.bootcamp.basics
 import com.bootcamp.basics.ControlStructures.Command._
 
 import scala.io.Source
+import scala.language.implicitConversions
 
 object ControlStructures {
 
@@ -25,7 +26,7 @@ object ControlStructures {
   implicit def toDouble(ss: List[Any]): List[Option[Double]] = ss.map(_.toString.toDoubleOption)
 
   def parseCommand(input: String): Either[ErrorMessage, Command] = {
-    input.split(" +").toList match {
+    input.split("\\s+").toList match {
       case "divide" :: dividend :: divisor :: Nil => Right(Divide(dividend, divisor))
 
       case "sum"      :: numbers  => Right(Sum(numbers))

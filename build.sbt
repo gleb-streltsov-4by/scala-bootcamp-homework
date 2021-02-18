@@ -2,7 +2,7 @@ name := "scala-bootcamp-homework"
 
 version := "0.1"
 
-scalaVersion := "2.13.4"
+scalaVersion := "2.12.12"
 
 // From https://tpolecat.github.io/2017/04/25/scalac-flags.html
 scalacOptions ++= Seq(
@@ -79,4 +79,16 @@ addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.1" cross CrossVers
 
 run / fork := true
 
-mainClass in (Compile, run) := Some("com.bootcamp.basics.ControlStructures")
+sbtPlugin := true
+
+lazy val diff = taskKey[Classpath](
+  "Difference in dependencies between Compile and Test sources")
+
+diff := Def.task {
+  // find fullClasspathAsJars in Test scope
+  val testJars = (Test / fullClasspathAsJars).value
+  // find fullClasspathAsJars in Compile scope
+  val compileJars = (fullClasspathAsJars in Compile).value
+  // difference
+  testJars.filterNot(x => compileJars.contains(x))
+}.value
