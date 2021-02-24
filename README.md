@@ -11,3 +11,4 @@ Scala Bootcamp Homework (2021)
 | 3      | [Collection & Data Structures](src/main/scala/com/bootcamp/collections)          | [Tests](src/test/scala/com/bootcamp/collections)                        |
 | 4      | [ADT](src/main/scala/com/bootcamp/adt/AlgebraicDataTypes.scala)                  | [Tests](src/test/scala/com/bootcamp/adt/AlgebraicDataTypesSpec.scala)   |
 | 5      | [SBT](plugins/src/com/bootcamp/BulkySourcesPlugin.scala)                         | -                                                                       |
+| 5      | [TypeClasses](/src/main/scala/com/bootcamp/implicits/TypeClassTask.scala)        | -                                                                       |
