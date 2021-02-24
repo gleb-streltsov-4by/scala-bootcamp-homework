@@ -1,1 +1,0 @@
-addSbtPlugin("sbt.plugins" % "plugins" % "0.1")
