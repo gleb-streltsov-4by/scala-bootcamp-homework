@@ -2,6 +2,8 @@ package com.bootcamp.implicits
 
 import com.bootcamp.implicits.Implicits.SuperVipCollections4s._
 import com.bootcamp.implicits.Implicits.SuperVipCollections4s.GetSizeScore._
+import com.bootcamp.implicits.Implicits.SuperVipCollections4s.Iterate._
+import com.bootcamp.implicits.Implicits.SuperVipCollections4s.Iterate2._
 import com.bootcamp.implicits.ImplicitsSpec.TestValue
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
@@ -48,7 +50,7 @@ class ImplicitsSpec extends AnyFreeSpec with Matchers {
     "for Map" in {
       assertCompiles(
         """import com.bootcamp.implicits.Implicits.SuperVipCollections4s._
-          |import com.bootcamp.implicits.Implicits.SuperVipCollections4s.instances._
+          |import com.bootcamp.implicits.Implicits.SuperVipCollections4s.Iterate2._
           |
           |implicitly[Iterate2[Map]]
           |""".stripMargin
@@ -57,7 +59,7 @@ class ImplicitsSpec extends AnyFreeSpec with Matchers {
     "for PackedMultiMap" in {
       assertCompiles(
         """import com.bootcamp.implicits.Implicits.SuperVipCollections4s._
-          |import com.bootcamp.implicits.Implicits.SuperVipCollections4s.instances._
+          |import com.bootcamp.implicits.Implicits.SuperVipCollections4s.Iterate2._
           |
           |implicitly[Iterate2[PackedMultiMap]]
           |""".stripMargin
@@ -66,8 +68,6 @@ class ImplicitsSpec extends AnyFreeSpec with Matchers {
   }
 
   "Size scores of primitives" - {
-    import com.bootcamp.implicits.Implicits.SuperVipCollections4s.instances._
-
     "Byte" in {
       127.toByte.sizeScore shouldEqual 1
     }
@@ -83,8 +83,6 @@ class ImplicitsSpec extends AnyFreeSpec with Matchers {
   }
 
   "Size score of collections" - {
-    import com.bootcamp.implicits.Implicits.SuperVipCollections4s.instances._
-
     "String" in {
       "".sizeScore shouldEqual 12
       "8".sizeScore shouldEqual (12 + 2)

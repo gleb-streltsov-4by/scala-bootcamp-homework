@@ -1,9 +1,10 @@
 package com.bootcamp.implicits
 
+import scala.annotation.tailrec
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
 
-//fill in implementation gaps here making the ImplicitsHomeworkSpec pass!
+// fill in implementation gaps here making the ImplicitsHomeworkSpec pass!
 object Implicits {
   /**
    * Lo and behold! Brand new super-useful collection library for Scala!
@@ -28,6 +29,8 @@ object Implicits {
   object SuperVipCollections4s {
     type SizeScore = Int
 
+    private val objectHeaderSizeScore: SizeScore = 12
+
     trait GetSizeScore[F] {
       def apply(value: F): SizeScore
     }
@@ -39,16 +42,21 @@ object Implicits {
         def sizeScore: SizeScore = GetSizeScore[F].apply(inner)
       }
 
-      // instances
-      implicit val byteSizeScore: GetSizeScore[Byte]    = _ => 1
-      implicit val intSizeScore: GetSizeScore[Int]      = _ => 4
-      implicit val longSizeScore: GetSizeScore[Long]    = _ => 8
-      implicit val charSizeScore: GetSizeScore[Char]    = _ => 2
+      /*
+      Implicit instances for types:
+      - Byte, Char, Int, Long
+      - String
+      - Array[T], List[T], Vector[T], Map[K,V], PackedMultiMap[K,V]
+        - points to karma if you provide those in a generic way
+        (Iterate and Iterate2 type-classes might be helpful!)
+      */
 
-      implicit val strSizeScore: GetSizeScore[String]   = (str: String) => 12 + str.length * 2
-
-//      implicit val classSizeScore: GetSizeScore[Class[_]]   = (c: Class[_]) =>
-//        12 + c.getDeclaredFields.foldLeft(0)((sum, field) => sum + field.getType.sizeScore)
+      // default instances
+      implicit def byteSizeScore: GetSizeScore[Byte]  = _ => 1
+      implicit def charSizeScore: GetSizeScore[Char]  = _ => 2
+      implicit def intSizeScore: GetSizeScore[Int]    = _ => 4
+      implicit def longSizeScore: GetSizeScore[Long]  = _ => 8
+      implicit def strSizeScore: GetSizeScore[String] = s => objectHeaderSizeScore + s.length * 2
     }
 
     /**
@@ -67,21 +75,109 @@ object Implicits {
       // with this you can use .sizeScore syntax on keys and values
       import GetSizeScore._
 
-      /*
-      mutable.LinkedHashMap is a mutable map container which preserves insertion
-      order - this might be useful!
-      */
       private val map = mutable.LinkedHashMap.empty[K, V]
 
-      def put(key: K, value: V): Unit = ???
+      def put(key: K, value: V): Unit = {
+        val delta = key.sizeScore + value.sizeScore
+        val current = currentScoreSize
+        if (delta < maxSizeScore) {
+          evictIfRequired(delta, current)
+          map(key) = value
+        }
+      }
 
-      def get(key: K): Option[V] = ???
+      def get(key: K): Option[V] = map.get(key)
 
-      private def currentSizeScore: SizeScore = {
-        map.foldLeft(0)((sizeScore, pair) => sizeScore + (pair match {
+      private def currentScoreSize: Int = {
+        map.foldLeft(0)((acc, pair) => acc + (pair match {
           case (k, v) => k.sizeScore + v.sizeScore
         }))
       }
+
+      @tailrec
+      private def evictIfRequired(delta: Int, current: Int): Unit = maxSizeScore - current match {
+        case extra if extra < delta && map.nonEmpty =>
+          val headOption = map.headOption
+          val key = headOption.map { case (key, _) => key }.get
+          val revealed = headOption.map { case (key, value) => key.sizeScore + value.sizeScore }.get
+
+          map -= key
+          evictIfRequired(delta, current - revealed)
+
+        case _ => ()
+      }
+    }
+
+    /**
+     * Type-class allowing us to iterate over different "collection-like" types with one type arg
+     */
+    trait Iterate[-F[_]] {
+      def iterator[T](f: F[T]): Iterator[T]
+    }
+
+    object Iterate {
+      import GetSizeScore._
+
+      def apply[F[_]](implicit instance: Iterate[F]): Iterate[F] = instance
+
+      implicit class IterateOps[F[_]: Iterate, T: GetSizeScore](inner: F[T]) {
+        def iterator: Iterator[T] = Iterate[F].iterator(inner)
+      }
+
+      // instances
+      implicit def iterateSizeScore[F[_]: Iterate, T: GetSizeScore]: GetSizeScore[F[T]] =
+        objectHeaderSizeScore + _.iterator.map(_.sizeScore).sum
+
+      implicit val iterableOnceIterate: Iterate[Iterable] = new Iterate[Iterable] {
+        override def iterator[T](f: Iterable[T]): Iterator[T] = f.iterator
+      }
+
+      //Array is not an Iterable in Scala 2.13 but we still might abstract over iteration logic for both!
+      implicit val arrayIterate: Iterate[Array] = new Iterate[Array] {
+        override def iterator[T](f: Array[T]): Iterator[T] = f.iterator
+      }
+    }
+
+    // Provide Iterate2 instances for Map and PackedMultiMap!
+    // if the code doesn't compile while you think it should - sometimes full rebuild helps!
+
+    /**
+     * Same as [[Iterate]] but for collections containing 2 types of values (think Map's and like)
+     */
+    trait Iterate2[-F[_, _]] {
+      def keyIterator[T, S](f: F[T, S]): Iterator[T]
+      def valueIterator[T, S](f: F[T, S]): Iterator[S]
+    }
+
+    object Iterate2 {
+      import GetSizeScore._
+
+      def apply[F[_, _]](implicit instance: Iterate2[F]): Iterate2[F] = instance
+
+      implicit class Iterate2Ops[F[_, _]: Iterate2, K: GetSizeScore, V: GetSizeScore](inner: F[K, V]) {
+        def keyIterator: Iterator[K] = Iterate2[F].keyIterator(inner)
+        def valueIterator: Iterator[V] = Iterate2[F].valueIterator(inner)
+      }
+
+      // instances
+      implicit def iterate2SizeScore[F[_, _]: Iterate2, K: GetSizeScore, V: GetSizeScore]: GetSizeScore[F[K, V]] =
+        x => objectHeaderSizeScore +
+          x.keyIterator.map(_.sizeScore).sum +
+          x.valueIterator.map(_.sizeScore).sum
+
+      implicit val mapIterate2: Iterate2[Map] = new Iterate2[Map] {
+        override def keyIterator[T, S](f: Map[T, S]): Iterator[T] = f.keys.iterator
+        override def valueIterator[T, S](f: Map[T, S]): Iterator[S] = f.values.iterator
+      }
+
+      implicit val multiMapIterate2: Iterate2[PackedMultiMap] =
+        new Iterate2[PackedMultiMap] {
+          override def keyIterator[T, S](f: PackedMultiMap[T, S]): Iterator[T] =
+            f.inner.map({ case (k, _) => k }).iterator
+
+          override def valueIterator[T, S](f: PackedMultiMap[T, S]): Iterator[S] =
+            f.inner.map({ case (_, v) => v }).iterator
+        }
     }
 
     /**
@@ -93,46 +189,6 @@ object Implicits {
       def empty[K, V]: PackedMultiMap[K, V] = PackedMultiMap()
       def apply[K, V](values: (K, V)*): PackedMultiMap[K, V] = PackedMultiMap(inner = ArraySeq(values: _*))
     }
-
-    /**
-     * Type-class allowing us to iterate over different "collection-like" types with one type arg
-     */
-    trait Iterate[-F[_]] {
-      def iterator[T](f: F[T]): Iterator[T]
-    }
-    /**
-     * Same as [[Iterate]] but for collections containing 2 types of values (think Map's and like)
-     */
-    trait Iterate2[-F[_, _]] {
-      def iterator1[T, S](f: F[T, S]): Iterator[T]
-      def iterator2[T, S](f: F[T, S]): Iterator[S]
-    }
-
-    object instances {
-
-      implicit val iterableOnceIterate: Iterate[Iterable] = new Iterate[Iterable] {
-        override def iterator[T](f: Iterable[T]): Iterator[T] = f.iterator
-      }
-      //Array is not an Iterable in Scala 2.13 but we still might abstract over iteration logic for both!
-      implicit val arrayIterate: Iterate[Array] = new Iterate[Array] {
-        override def iterator[T](f: Array[T]): Iterator[T] = f.iterator
-      }
-      //Provide Iterate2 instances for Map and PackedMultiMap!
-      //if the code doesn't compile while you think it should - sometimes full rebuild helps!
-
-      /*
-      replace this big guy with proper implicit instances for types:
-      - Byte, Char, Int, Long
-      - String
-      - Array[T], List[T], Vector[T], Map[K,V], PackedMultiMap[K,V]
-        - points to karma if you provide those in a generic way
-        (Iterate and Iterate2 type-classes might be helpful!)
-
-      If you struggle with writing generic instances for Iterate and Iterate2, start by writing instances for
-      List and other collections and then replace those with generic instances.
-       */
-      implicit def stubGetSizeScore[T]: GetSizeScore[T] = (_: T) => 42
-    }
   }
 
   /*
@@ -141,6 +197,9 @@ object Implicits {
    */
   object MyTwitter {
     import SuperVipCollections4s._
+    import SuperVipCollections4s.GetSizeScore._
+    import SuperVipCollections4s.Iterate._
+    import SuperVipCollections4s.Iterate2._
 
     final case class Twit(
       id: Long,
@@ -150,11 +209,26 @@ object Implicits {
       fbiNotes: List[FbiNote],
     )
 
+    object Twit {
+      implicit def twitSizeScore: GetSizeScore[Twit] = twit =>
+        twit.id.sizeScore +
+          twit.userId.sizeScore +
+          twit.hashTags.sizeScore +
+          twit.attributes.sizeScore +
+          twit.fbiNotes.sizeScore
+    }
+
     final case class FbiNote(
       month: String,
       favouriteChar: Char,
       watchedPewDiePieTimes: Long,
     )
+
+    object FbiNote {
+      implicit def fbiNote: GetSizeScore[FbiNote] = note => {
+        note.month.sizeScore + note.favouriteChar.sizeScore + note.watchedPewDiePieTimes.sizeScore
+      }
+    }
 
     trait TwitCache {
       def put(twit: Twit): Unit
@@ -164,6 +238,12 @@ object Implicits {
     /*
     Return an implementation based on MutableBoundedCache[Long, Twit]
      */
-    def createTwitCache(maxSizeScore: SizeScore): TwitCache = ???
+    def createTwitCache(maxSizeScore: SizeScore): TwitCache = new TwitCache() {
+
+      private val mutableCache = new MutableBoundedCache[Long, Twit](maxSizeScore)
+
+      override def put(twit: Twit): Unit = mutableCache.put(twit.id, twit)
+      override def get(id: Long): Option[Twit] = mutableCache.get(id)
+    }
   }
 }
