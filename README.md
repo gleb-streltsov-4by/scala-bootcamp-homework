@@ -13,4 +13,5 @@ Scala Bootcamp Homework (2021)
 | 6      | [SBT](plugins/src/com/bootcamp/BulkySourcesPlugin.scala)                             | -                                                                                 |
 | 7      | [TypeClasses 1](/src/main/scala/com/bootcamp/implicits/TypeClassTask.scala)          | -                                                                                 |
 | 8      | [TypeClasses 2](/src/main/scala/com/bootcamp/implicits/Implicits.scala)              | [Tests](src/test/scala/com/bootcamp/implicits/ImplicitsSpec.scala)                |
-| 9      | [Error Handling](/src/main/scala/com/bootcamp/error_handling/ErrorHandling.scala)    | [Tests](src/test/scala/com/bootcamp/error_handling/ErrorHandlingSpec.scala)      ||
+| 9      | [Error Handling](/src/main/scala/com/bootcamp/error_handling/ErrorHandling.scala)    | [Tests](src/test/scala/com/bootcamp/error_handling/ErrorHandlingSpec.scala)       |
+| 10     | [Json](/src/test/scala/com/bootcamp/json/CirceSpec.scala)                            | [Tests](src/test/scala/com/bootcamp/json/CirceSpec.scala)                         |
