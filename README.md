@@ -16,3 +16,4 @@ Scala Bootcamp Homework (2021)
 | 9      | [Error Handling](/src/main/scala/com/bootcamp/error_handling/ErrorHandling.scala)    | [Tests](src/test/scala/com/bootcamp/error_handling/ErrorHandlingSpec.scala)       |
 | 10     | [Json](/src/test/scala/com/bootcamp/json/CirceSpec.scala)                            | [Tests](src/test/scala/com/bootcamp/json/CirceSpec.scala)                         |
 | 11     | [Testing](/src/main/scala/com/bootcamp/calculator/ConsoleCalculator.scala)           | [Tests](src/test/scala/com/bootcamp/calculator/ConsoleCalculatorSpec.scala)       |
+| 11     | [Cats](/src/main/scala/com/bootcamp/cats/CatsExercises.scala)                        | -                                                                                 |
