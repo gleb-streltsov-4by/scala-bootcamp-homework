@@ -61,10 +61,10 @@ object EffectsHomework1 {
   }
 
   object IO {
-    def apply[A](body: => A): IO[A] = IO(body)
-    def suspend[A](thunk: => IO[A]): IO[A] = thunk // ??? not sure
-    def delay[A](body: => A): IO[A] = IO(body)
-    def pure[A](a: A): IO[A] = IO(a)
+    def apply[A](body: => A): IO[A] = pure(body)
+    def suspend[A](thunk: => IO[A]): IO[A] = thunk
+    def delay[A](body: => A): IO[A] = pure(body)
+    def pure[A](a: A): IO[A] = new IO(() => a)
     def fromEither[A](e: Either[Throwable, A]): IO[A] = e.fold(raiseError, pure)
 
     def fromOption[A](option: Option[A])(orElse: => Throwable): IO[A] = option match {
@@ -73,12 +73,12 @@ object EffectsHomework1 {
     }
 
     def fromTry[A](t: Try[A]): IO[A] = t.fold(raiseError, pure)
-    def none[A]: IO[Option[A]] = IO(None)
-    def raiseError[A](e: Throwable): IO[A] = IO(throw e)
-    def raiseUnless(cond: Boolean)(e: => Throwable): IO[Unit] = ???
-    def raiseWhen(cond: Boolean)(e: => Throwable): IO[Unit] = ???
-    def unlessA(cond: Boolean)(action: => IO[Unit]): IO[Unit] = ???
-    def whenA(cond: Boolean)(action: => IO[Unit]): IO[Unit] = ???
-    val unit: IO[Unit] = ???
+    def none[A]: IO[Option[A]] = pure(None)
+    def raiseError[A](e: Throwable): IO[A] = pure(throw e)
+    def raiseUnless(cond: Boolean)(e: => Throwable): IO[Unit] = unlessA(cond)(pure(e))
+    def raiseWhen(cond: Boolean)(e: => Throwable): IO[Unit] = whenA(cond)(pure(e))
+    def unlessA(cond: Boolean)(action: => IO[Unit]): IO[Unit] = if (cond) unit else action
+    def whenA(cond: Boolean)(action: => IO[Unit]): IO[Unit] = if (cond) action else unit
+    val unit: IO[Unit] = pure(())
   }
 }
