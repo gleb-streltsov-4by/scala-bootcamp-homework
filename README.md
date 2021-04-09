@@ -18,3 +18,4 @@ Scala Bootcamp Homework (2021)
 | 11     | [Testing](/src/main/scala/com/bootcamp/calculator/ConsoleCalculator.scala)           | [Tests](src/test/scala/com/bootcamp/calculator/ConsoleCalculatorSpec.scala)       |
 | 12     | [Cats](/src/main/scala/com/bootcamp/cats/CatsExercises.scala)                        | -                                                                                 |
 | 13     | [Cats Effect](/src/main/scala/com/bootcamp/cats_effect/EffectsHomework1.scala)       | [Tests](/src/test/scala/com/bootcamp/cats_effect/EffectsHomework1Spec.scala)      |
+| 14     | [Cats Effect 2](/src/main/scala/com/bootcamp/cats_effect/EffectsHomework2.scala)     | -                                                                                 |
