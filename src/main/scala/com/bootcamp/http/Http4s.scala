@@ -2,7 +2,7 @@ package com.bootcamp.http
 
 import cats.Functor
 import cats.data.Kleisli
-import cats.effect.{Blocker, ExitCode, IO, IOApp, Sync}
+import cats.effect.{Blocker, ExitCode, IO, IOApp, Resource, Sync}
 import cats.effect.concurrent.Ref
 import cats.implicits._
 import org.http4s.client.dsl.io._
@@ -12,13 +12,23 @@ import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.{HttpRoutes, Method, Request, Response, Uri}
 import org.http4s.circe.CirceEntityCodec.{circeEntityDecoder, circeEntityEncoder}
 import io.circe.generic.JsonCodec
+import io.circe.syntax._
+import io.circe.parser.decode
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.ExecutionContext
 import scala.util.Random
 import com.bootcamp.http.GuessApi._
+import fs2.Pipe
+import fs2.concurrent.Queue
 import org.http4s.client.Client
 import org.http4s.client.blaze.BlazeClientBuilder
+import org.http4s.client.jdkhttpclient.{JdkWSClient, WSConnectionHighLevel, WSFrame, WSRequest}
+import org.http4s.server.websocket.WebSocketBuilder
+import org.http4s.websocket.WebSocketFrame
+
+import java.io.IOException
+import java.net.http.HttpClient
 
 // Homework. Place the solution under `http` package in your homework repository.
 //
@@ -40,13 +50,16 @@ object GuessApi {
 
   val apiVersion = "v1"
 
-  val apiHost = "localhost"
-  val apiPort = 9000
+  val host = "localhost"
+  val port = 9000
   val apiPath = "api"
-  val apiUrl = s"http://$apiHost:$apiPort/$apiPath/$apiVersion"
 
-  val apiInitMethod = "init"
-  val apiGuessMethod = "guess"
+  val httpApiUrl = s"http://$host:$port/$apiPath/$apiVersion"
+  val wsApiUrl = s"ws://$host:$port/$apiPath/$apiVersion"
+
+  val initMethod = "init"
+  val guessMethod = "guess"
+  val webSocketMethod = "ws"
 
   @JsonCodec final case class InitGeneratorRequest(min: Int, max: Int)
 
@@ -78,7 +91,7 @@ object GuessServer extends IOApp with IOLogger {
   override def run(args: List[String]): IO[ExitCode] = {
     RefGuessGenerator.from[IO].flatMap(generator =>
       BlazeServerBuilder[IO](ExecutionContext.global)
-        .bindHttp(port = apiPort, host = apiHost)
+        .bindHttp(port = port, host = host)
         .withHttpApp(httpApp(generator))
         .serve
         .compile
@@ -116,27 +129,64 @@ object GuessServer extends IOApp with IOLogger {
 
     object GuessValue extends QueryParamDecoderMatcher[Int]("value")
 
+    def processWebSocketData(payload: String): IO[WebSocketFrame.Text] = {
+
+      def tryInitGenerator(payload: String): IO[WebSocketFrame.Text] = {
+        decode[InitGeneratorRequest](payload) match {
+          case Right(InitGeneratorRequest(min, max)) => for {
+            guessValue  <- generator.init(min, max)
+            _           <- ioInfo(s"Generated guess value: $guessValue")
+          } yield WebSocketFrame.Text("Guess value is successfully generated")
+          case _ => tryGuess(payload)
+        }
+      }
+
+      def tryGuess(payload: String): IO[WebSocketFrame.Text] = {
+        decode[Int](payload) match {
+          case Right(guessValue) => for {
+            result <- generator.guess(guessValue)
+          } yield WebSocketFrame.Text(result.asJson.toString)
+          case _ => IO(WebSocketFrame.Text(s"Invalid input data for guessing. Details: $payload"))
+        }
+      }
+
+      tryInitGenerator(payload)
+    }
+
     HttpRoutes.of[IO] {
-      case request @ POST -> Root / apiPath / apiVersion / apiInitMethod => (for {
+      case request @ POST -> Root / apiPath / apiVersion / initMethod => (for {
         validated   <- request.as[InitGeneratorRequest]
         guessValue  <- generator.init(validated.min, validated.max)
 
         _ <- ioInfo(s"Generated guess value: $guessValue")
       } yield Ok("Guess value is successfully generated")).flatten
 
-      case GET -> Root /  apiPath / apiVersion / apiGuessMethod :? GuessValue(value) => (for {
+      case GET -> Root / apiPath / apiVersion / guessMethod :? GuessValue(value) => (for {
         result <- generator.guess(value)
       } yield Ok(result)).flatten
+
+      case GET -> Root / apiPath / apiVersion / webSocketMethod =>
+        val pipe: Pipe[IO, WebSocketFrame, WebSocketFrame] = _.evalMap {
+          case WebSocketFrame.Text(data, _) => processWebSocketData(data.trim)
+          case close@WebSocketFrame.Close(_) => IO(close)
+        }
+        for {
+          queue <- Queue.bounded[IO, WebSocketFrame](4096)
+          response <- WebSocketBuilder[IO].build(
+            receive = queue.enqueue,
+            send = queue.dequeue.through(pipe)
+          )
+        } yield response
     }
   }.orNotFound
 }
 
-object GuessClient extends IOApp with IOLogger with EagerLogger {
+object HttpGuessClient extends IOApp with IOLogger with EagerLogger {
 
   private val min = 0
-  private val max = 40
+  private val max = 100
 
-  private val uri = Uri.fromString(s"$apiUrl").fold(_ => uri"", u => u)
+  private val uri = Uri.fromString(s"$httpApiUrl").fold(_ => uri"", u => u)
 
   override def run(args: List[String]): IO[ExitCode] = {
     BlazeClientBuilder[IO](ExecutionContext.global)
@@ -144,27 +194,74 @@ object GuessClient extends IOApp with IOLogger with EagerLogger {
       .parZip(Blocker[IO]).use { case (client, _) =>
         for {
           result <- client.expect[String](Method.POST(
-            InitGeneratorRequest(min, max), uri / apiInitMethod))
+            InitGeneratorRequest(min, max), uri / initMethod))
           _ <- ioInfo(result)
-          _ <- guessNumber(min, max)(client)
+          _ <- tryGuess(min, max)(client)
         } yield ()
       }.as(ExitCode.Success)
   }
 
-  private def guessNumber(min: Int, max: Int)(
+  private def tryGuess(min: Int, max: Int)(
     implicit client: Client[IO]): IO[Boolean] = {
     val mid = (min + max) / 2
-    client.expect[GuessResult]((uri / apiGuessMethod)
+    client.expect[GuessResult]((uri / guessMethod)
       .withQueryParam(key = "value", value = mid))
       .flatMap { result =>
         info(s"Request with guess value `$mid` has result: `${result.toString}`")
 
         result match {
-          case Lower    => guessNumber(mid, max)
-          case Greater  => guessNumber(min, mid)
+          case Lower    => tryGuess(mid, max)
+          case Greater  => tryGuess(min, mid)
           case Match    => IO(true)
           case _        => IO(false)
         }
       }
+  }
+}
+
+object WebSocketGuessClient extends IOApp with IOLogger with EagerLogger {
+
+  private val min = 0
+  private val max = 100
+
+  private val uri = Uri.fromString(s"$wsApiUrl/$webSocketMethod").fold(_ => uri"", u => u)
+
+  override def run(args: List[String]): IO[ExitCode] = {
+    val clientResource = Resource
+      .eval(IO(HttpClient.newHttpClient()))
+      .flatMap(JdkWSClient[IO](_).connectHighLevel(WSRequest(uri)))
+
+    clientResource.use { client =>
+      for {
+        _ <- client.send(WSFrame.Text(InitGeneratorRequest(min, max).asJson.toString))
+        _ <- ioInfo("Request for generation of value for guessing is sent")
+        _ <- client.receiveStream.collectFirst {
+          case WSFrame.Text(data @ "Guess value is successfully generated", _) => info(data)
+        }.compile.lastOrError
+        result <- tryGuess(min, max)(client)
+      } yield info(s"Result of guessing: $result")
+    }.as(ExitCode.Success)
+  }
+
+  private def tryGuess(min: Int, max: Int)(
+      implicit client: WSConnectionHighLevel[IO]): IO[Boolean] = {
+    val mid = (min + max) / 2
+    client.send(WSFrame.Text(mid.toString)) *> client.receiveStream
+      .collectFirst {
+        case WSFrame.Text(data, _) =>
+          (for {
+            result <- IO.fromEither(decode[GuessResult](data))
+            _      <- ioInfo(s"Received data: $result")
+            isValueGuessed = result match {
+              case Lower    => tryGuess(mid, max)
+              case Greater  => tryGuess(min, mid)
+              case Match    => IO(true)
+              case _        => IO(false)
+            }
+          } yield isValueGuessed).flatten
+        case _ => IO.raiseError(new IOException("Invalid response from the server"))
+      }.compile
+      .lastOrError
+      .flatten
   }
 }

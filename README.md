@@ -21,3 +21,4 @@ Scala Bootcamp Homework (2021)
 | 14     | [Cats Effect 2](/src/main/scala/com/bootcamp/cats_effect/EffectsHomework2.scala)     | -                                                                                 |
 | 15     | [Shared State](/src/main/scala/com/bootcamp/cats_effect/SharedStateHomework.scala)   | -                                                                                 |
 | 16     | [Http4s](/src/main/scala/com/bootcamp/http/Http4s.scala)                             | -                                                                                 |
+| 17     | [Web Socket](/src/main/scala/com/bootcamp/http/Http4s.scala)                         | -                                                                                 |
