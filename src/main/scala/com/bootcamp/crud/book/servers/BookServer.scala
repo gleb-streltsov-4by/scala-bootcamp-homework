@@ -18,11 +18,7 @@ object BookServer {
   def stream[F[_] : ConcurrentEffect](implicit T: Timer[F]): Stream[F, Nothing] = {
     val bookService = BookService.impl[F]
 
-    val httpApp = (
-      getRoutes[F](bookService) <+>
-      putRoutes[F](bookService) <+>
-      postRoutes[F](bookService) <+>
-      deleteRoutes[F](bookService)).orNotFound
+    val httpApp = routes[F](bookService).orNotFound
 
     for {
       exitCode <- BlazeServerBuilder[F](global)
