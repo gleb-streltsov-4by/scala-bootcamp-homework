@@ -1,89 +1,37 @@
 package com.bootcamp.error_handling
 
-import cats.data.Validated.{Invalid, Valid}
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
-import com.bootcamp.error_handling.ErrorHandling.PaymentCardValidator._
-import cats.syntax.all._
-import com.bootcamp.error_handling.ErrorHandling.ValidationError.{InvalidCardNumberFormat, InvalidExpirationDateFormat, InvalidOwnerFormat, InvalidSecurityCodeFormat}
+import cats.data.Chain
+import com.bootcamp.error_handling.ErrorHandling.AccountValidationError.InvalidSecurityCode
+import com.bootcamp.error_handling.ErrorHandling.AccountValidator.validateSecurityCode
+import org.scalatest.freespec.AnyFreeSpec
 
-class ErrorHandlingSpec
-  extends AnyFlatSpec
-    with Matchers
-    with ScalaCheckDrivenPropertyChecks {
+class ErrorHandlingSpec extends AnyFreeSpec {
 
-  "validate" should "return valid payment card" in {
-    val name = "Hleb Straltsou"
-    val cardNumber = "1234567890123456"
-    val expirationDate = "02/25"
-    val securityCode = "998"
+  "valid security code: 444" in {
+    val inputSecurityCode = "444"
+    val expected          = "444"
 
-    validate(name, cardNumber, expirationDate, securityCode) shouldBe a [Valid[_]]
-  }
+    val actual = validateSecurityCode(inputSecurityCode)
 
-  "validate" should "fail because of name and card number format" in {
-    val name = "Invalid 2"
-    val cardNumber = "123456780123456"
-    val expirationDate = "02/25"
-    val securityCode = "998"
+    assert(actual.isValid)
 
-    val actual = validate(name, cardNumber, expirationDate, securityCode)
-
-    actual.leftMap(_.toList) shouldBe Invalid(
-      List(InvalidOwnerFormat, InvalidCardNumberFormat)
+    actual.fold(
+      e => fail(s"Doesn't expect an error: $e"),
+      v => assert(v.value == expected)
     )
   }
 
-  "validate" should "fail because of card number" in {
-    val name = "Hleb Straltsou"
-    val cardNumber = "123456780123456"
-    val expirationDate = "02/25"
-    val securityCode = "998"
+  "invalid security code: 4444" in {
+    val inputSecurityCode = "4444x"
+    val expected          = Chain(InvalidSecurityCode)
 
-    val actual = validate(name, cardNumber, expirationDate, securityCode)
+    val actual = validateSecurityCode(inputSecurityCode)
 
-    actual.leftMap(_.toList) shouldBe Invalid(
-      List(InvalidCardNumberFormat)
-    )
-  }
+    assert(actual.isInvalid)
 
-  "validate" should "fail because of expiration date format" in {
-    val name = "Hleb Straltsou"
-    val cardNumber = "1234567810123456"
-    val expirationDate = "02/255"
-    val securityCode = "998"
-
-    val actual = validate(name, cardNumber, expirationDate, securityCode)
-
-    actual.leftMap(_.toList) shouldBe Invalid(
-      List(InvalidExpirationDateFormat)
-    )
-  }
-
-  "validate" should "fail because of expiration date and card number" in {
-    val name = "Hleb"
-    val cardNumber = "123456780123456"
-    val expirationDate = "02/251"
-    val securityCode = "998"
-
-    val actual = validate(name, cardNumber, expirationDate, securityCode)
-
-    actual.leftMap(_.toList) shouldBe Invalid(
-      List(InvalidCardNumberFormat, InvalidExpirationDateFormat)
-    )
-  }
-
-  "validate" should "fail because of security code format" in {
-    val name = "Hleb Straltsou"
-    val cardNumber = "1234567810123456"
-    val expirationDate = "02/25"
-    val securityCode = "9981"
-
-    val actual = validate(name, cardNumber, expirationDate, securityCode)
-
-    actual.leftMap(_.toList) shouldBe Invalid(
-      List(InvalidSecurityCodeFormat)
+    actual.fold(
+      e => assert(e === expected),
+      v => fail(s"Doesn't expect a Valid value: $v")
     )
   }
 }
